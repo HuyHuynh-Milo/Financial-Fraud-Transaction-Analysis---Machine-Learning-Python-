@@ -37,30 +37,30 @@ Out of scope: This project does not cover deployment into production systems, in
 
 - The dataset contains detailed information about financial transactions, including customer demographics, merchant details, and fraud labels. Each row represents a single transaction with the following attributes:
 
-| **Feature**                  | **Description**                                                |
-| ---------------------------- | -------------------------------------------------------------- |
-| **trans\_date\_trans\_time** | Date and time of the transaction                               |
-| **cc\_num**                  | Credit card number (anonymized)                                |
-| **merchant**                 | Merchant receiving the payment                                 |
-| **category**                 | Business category of the merchant (e.g., retail, food, travel) |
-| **amt**                      | Transaction amount in U.S. dollars                             |
-| **first**                    | First name of the cardholder                                   |
-| **last**                     | Last name of the cardholder                                    |
-| **gender**                   | Gender of the cardholder (`Male` / `Female`)                   |
-| **street**                   | Street address of the cardholder’s residence                   |
-| **city**                     | City of the cardholder’s residence                             |
-| **state**                    | State of the cardholder’s residence                            |
-| **zip**                      | ZIP code of the cardholder’s residence                         |
-| **lat**                      | Latitude of the cardholder’s residence                         |
-| **long**                     | Longitude of the cardholder’s residence                        |
-| **city\_pop**                | Population of the cardholder’s city                            |
-| **job**                      | Occupation of the cardholder                                   |
-| **dob**                      | Date of birth of the cardholder                                |
-| **trans\_num**               | Unique transaction ID                                          |
-| **unix\_time**               | Unix timestamp (seconds since Jan 1, 1970)                     |
-| **merch\_lat**               | Latitude of the merchant’s location                            |
-| **merch\_long**              | Longitude of the merchant’s location                           |
-| **is\_fraud**                | Fraud label (`1 = Fraudulent`, `0 = Legitimate`)               |
+| **Feature**                  | **Description**                                                | **Dtype**
+| ---------------------------- | -------------------------------------------------------------- |-----------
+| **trans\_date\_trans\_time** | Date and time of the transaction                               | datetime64[ns]
+| **cc\_num**                  | Credit card number (anonymized)                                | int64
+| **merchant**                 | Merchant receiving the payment                                 | object
+| **category**                 | Business category of the merchant (e.g., retail, food, travel) | object
+| **amt**                      | Transaction amount in U.S. dollars                             | float64
+| **first**                    | First name of the cardholder                                   | object
+| **last**                     | Last name of the cardholder                                    | object
+| **gender**                   | Gender of the cardholder (`Male` / `Female`)                   | object
+| **street**                   | Street address of the cardholder’s residence                   | object
+| **city**                     | City of the cardholder’s residence                             | object
+| **state**                    | State of the cardholder’s residence                            | object
+| **zip**                      | ZIP code of the cardholder’s residence                         | int64 
+| **lat**                      | Latitude of the cardholder’s residence                         | float64
+| **long**                     | Longitude of the cardholder’s residence                        | float64
+| **city\_pop**                | Population of the cardholder’s city                            | int64
+| **job**                      | Occupation of the cardholder                                   | object
+| **dob**                      | Date of birth of the cardholder                                | datetime64[ns]
+| **trans\_num**               | Unique transaction ID                                          | object
+| **unix\_time**               | Unix timestamp (seconds since Jan 1, 1970)                     | int64
+| **merch\_lat**               | Latitude of the merchant’s location                            | float64 
+| **merch\_long**              | Longitude of the merchant’s location                           | float64
+| **is\_fraud**                | Fraud label (`1 = Fraudulent`, `0 = Legitimate`)               | int64
 
 ---
 
