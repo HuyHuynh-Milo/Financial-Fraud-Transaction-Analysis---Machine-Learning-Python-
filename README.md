@@ -125,7 +125,7 @@ is_fraud  | Ratio
 1         | 0.076789
 
 - Fraud percentage in this dataset is over 7.67%, an mid-imbalance ratio dataset
-- For EDA, must separate fraud and non-fraud observations so the analysis won't be biased.
+- For EDA, some anaalysis must separate fraud and non-fraud observations so the analysis won't be biased.
 - For ML model, Accuracy is not a good metric for model validation, F1-score or recall should be considered.
 
 **📈 2. Fraud over time**
@@ -506,5 +506,212 @@ fig.show()
 
 - Most of the top fraud cases are concentrated in large and economically strong states such as CA, NY, TX, and FL. This may suggest a correlation between fraud and population or transaction volume.
 
+**City population aspect**
 
- 
+```python
+# Calculate fraud_rate
+fraud_city = fraud_trans[fraud_trans['is_fraud'] == 1]['city'].value_counts()
+non_fraud_city = fraud_trans['city'].value_counts()
+fraud_rate_city = ((fraud_city/non_fraud_city)*100).fillna(0)
+
+# Turn fraud_city into dataframe
+fraud_city_df = fraud_city.reset_index()
+fraud_city_df.columns = ['city','fraud']
+
+# Turn fraud_rate_city into DataFrame
+fraud_rate_city_df = fraud_rate_city.reset_index()
+fraud_rate_city_df.columns = ['city','fraud_rate']
+
+# Filter the city max population (some city have many population data)
+top_city_pop = fraud_trans[['city','city_pop']]
+city_max_pop = top_city_pop.groupby('city', as_index=False)['city_pop'].max()
+
+# Merge fraud table into city population table
+pop_fraud = fraud_city_df.merge(city_max_pop, on = 'city', how = 'left') 
+
+# Merge fraud rate table into city population table
+pop_fraudrate = fraud_rate_city_df.merge(city_max_pop, on = 'city', how = 'left')
+# print(pop_fraudrate)
+
+# Draw scatter plot for fraud rate, fraud & population
+plt.figure(figsize = (14,7))
+
+# Plot for fraud vs population
+plt.subplot(1,2,1)
+sns.scatterplot(                  # Scatter plot
+    data = pop_fraud,
+    x = 'city_pop',
+    y = 'fraud'
+)
+sns.regplot(                      # Regression line plot
+    data = pop_fraud, 
+    x="city_pop", 
+    y="fraud", 
+    line_kws={"color":"red"},
+    ci = None                    # remove confidence interval 
+)
+plt.title("City Population vs Fraud")
+
+# Plot for Fraud_rate vs Population
+plt.subplot(1,2,2)
+sns.scatterplot(                
+    data = pop_fraudrate,
+    x = 'city_pop',
+    y = 'fraud_rate'
+)
+sns.regplot(                      # Regression line plot
+    data = pop_fraudrate, 
+    x="city_pop", 
+    y="fraud_rate", 
+    line_kws={"color":"red"},
+    ci= None                     # remove confidence interval
+)
+plt.title("City Population vs Fraud Rate %")
+
+plt.show()
+```
+
+ <img width="1155" height="622" alt="image" src="https://github.com/user-attachments/assets/e5bc8e28-6433-40b8-b955-e7daa98a46d0" />
+
+- The graph indicate that larger city population tend to have more fraud. Its show that city population have a positive relation to fraud cases.
+- However the fraud rate seems to have no relationship with city population
+    -> Absolute volume scale with size, but rate does not.
+
+**Relationship between fraud rate and number/amount$ of transactions**
+
+```python
+# Calculate fraud_rate
+fraud_city = fraud_trans[fraud_trans['is_fraud'] == 1]['city'].value_counts()
+non_fraud_city = fraud_trans['city'].value_counts()
+fraud_rate_city = ((fraud_city/non_fraud_city)*100).fillna(0)
+
+# Turn fraud_rate into dataframe
+fraud_rate_city_df = fraud_rate_city.reset_index()
+fraud_rate_city_df.columns = ['city','fraud_rate']
+
+# Calculate total transactions each city
+total_trans_city = fraud_trans['city'].value_counts()
+# print(total_trans_city)
+
+# Calculate total money amount each city
+total_amt_city = fraud_trans.groupby('city')['amt'].sum()
+# print(total_amt_city)
+
+# Convert total transactions and total amount to dataframe
+total_trans_city_df = total_trans_city.reset_index()
+total_trans_city_df.columns = ['city','total_trans']
+
+total_amt_city_df = total_amt_city.reset_index()
+total_amt_city_df.columns = ['city','total_amt']
+
+# Merge everything vào fraud_rate_city_df
+final_city_df = fraud_rate_city_df.merge(total_trans_city_df, on='city', how='left') \
+                                  .merge(total_amt_city_df, on='city', how='left')
+# print(final_city_df)
+
+# Draw plot for relationship with total trans, total amt to fraud rate
+plt.figure(figsize = (14,7))
+
+# Plot for fraud vs population
+plt.subplot(1,2,1)
+sns.scatterplot(                  # Scatter plot
+    data = final_city_df,
+    x = 'fraud_rate',
+    y = 'total_trans'
+)
+sns.regplot(                      # Regression line plot
+    data = final_city_df, 
+    x = "fraud_rate",
+    y = "total_trans",
+    line_kws={"color":"red"},
+    ci = None                    # remove confidence interval 
+)
+plt.title("Fraud Rate % vs Total transactions for city")
+
+# Plot for Fraud_rate vs Population
+plt.subplot(1,2,2)
+sns.scatterplot(                
+    data = final_city_df,
+    x = 'fraud_rate',
+    y = 'total_amt'
+)
+sns.regplot(                      # Regression line plot
+    data = final_city_df,
+    x = "fraud_rate",
+    y = "total_amt",
+    line_kws={"color":"red"},
+    ci= None                     # remove confidence interval
+)
+plt.title("Fraud Rate % vs Total amount money for city")
+
+plt.show()
+```
+<img width="1161" height="622" alt="image" src="https://github.com/user-attachments/assets/97c74696-20d6-4dc6-bbd7-26b51123a67d" />
+
+- There is a negative relationship between Fraud rate and total transactions
+  - Most city have fraud rate <40%, but almost every city have fraud rate > 20% have less than 100 transactions 
+  - Some city have 100% fraud rate with small transaction volume, which is very fishy and need some attention
+- Similarly, there is a downward trend: cities with higher fraud rates often correspond to lower total transaction amounts $.
+  - Outliers exist: some cities with low fraud rates still handle very large total transaction amounts (up to $50,000).
+
+-> Fraud is more concentrated in smaller-volume cities: places with fewer transactions and lower transaction amounts often show high fraud rates (even reaching 100%). High-transaction cities tend to have lower fraud rates, which makes sense because fraudsters are less able to dominate the transaction volume in larger markets.
+
+**Top 10 cities with the most fraud volume**
+```python
+# Calculate Top 10 city have most fraud
+top_fraud_city = fraud_trans[fraud_trans['is_fraud'] == 1]['city'].value_counts().head(10)
+top_fraud_money_city = fraud_trans[fraud_trans['is_fraud'] == 1].groupby('city')['amt'].sum()      # Calculate fraud money each city
+top_money = top_fraud_money_city[top_fraud_money_city.index.isin(top_fraud_city.index)]            # Filter top10 fraud city
+
+# Connect top fraud and top money into 1 DataFrame
+top_city = pd.concat(
+    [top_fraud_city,top_money],
+    axis = 1
+).reset_index()
+
+# Change the name of those column
+top_city.columns = ['city', 'fraud', 'amt']
+
+# Draw column and line plot for top 10 most fraud city
+fig, ax1 = plt.subplots(figsize=(10,6))               # use subplots() 'cause it make axes easier
+
+# Draw bar plot for fraud count (using the left side y-axis)
+ax1.bar(top_city['city'], 
+        top_city['fraud'], 
+        color='skyblue', 
+        label='Fraud count')
+ax1.set_ylabel('Fraud count', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
+
+# Draw line plot for fraud amount (using the right side y-axis)
+ax2 = ax1.twinx()                                 # Create duplicate axes use same x-axis with ax1 
+ax2.plot(top_city['city'], 
+         top_city['amt'], 
+         color='red', 
+         marker='o', 
+         label='Fraud amount $')
+ax2.set_ylabel('Fraud amount $', color = 'red')
+ax2.tick_params(axis='y', labelcolor='red')
+# Ép trục bên phải bắt đầu từ 0
+ax2.set_ylim(0, max(top_city['amt']) * 1.1)       # set limit min = 0, max = (max of the amt)*10% so the plot wont touch the ceiling
+
+# Create legend for ax1 and ax2
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+fig.legend(handles1+handles2, labels1+labels2,
+           loc='upper right')   # Legend chung, góc phải trên
+
+# Add title
+plt.title('Top 10 cities with most fraud (count vs amount)')
+plt.xticks(rotation=45)
+
+plt.show()
+```
+<img width="935" height="570" alt="image" src="https://github.com/user-attachments/assets/a9b7a797-050e-4792-8a6b-dd3a7ca0aa1f" />
+
+- Houston seemed to have both highest fraud count at nearly 40 and most costly with nearly $22000
+- Dallas has higher money value for each fraud transaction, only 28 fraud but costed $20000
+- Warren, Naples and Tulsa are both have high fraud count and fraud money amount, Need to be taken care of.
+
+--
+### 🤖 4. Machine Learning predicts fraudulent transactions
