@@ -715,3 +715,111 @@ plt.show()
 
 --
 ### 🤖 4. Machine Learning predicts fraudulent transactions
+**1. Encoding**
+- Check for unique value in category features:
+```python
+object_col = fraud_trans.select_dtypes(include = 'object')
+for col in object_col.columns:
+    print(f"{col}: {object_col[col].nunique()}")
+```
+```python
+merchant: 693
+category: 14
+first: 352
+last: 481
+gender: 2
+street: 983
+city: 894
+state: 51
+job: 494
+trans_num: 97748
+```
+- Category and gender columns can be one-hot encoding because they have just a few values (14 and 2 values).
+- State and Job columns have many different values (51 and 494 values), so Frequency encoding is a better choice.
+- Columns like merchant, city have too many unique values, so the encoding could make the ML model overfit. The option here is to remove these columns
+- All other unnecessary columns (first, last,..) will be deletted
+
+**Encoding:**
+```python
+# One-hot Encode 2 columns: category and gender
+columns = ['category', 'gender']
+fraud_trans_dummies = pd.get_dummies(fraud_trans, columns = columns, drop_first = True)
+
+# Frequency encoding 2 columns: state and job
+# Get Frequency of state, job column (turn them to a number based on their frequency)
+fraud_trans_dummies['state'] = fraud_trans_dummies['state'].map(fraud_trans_dummies['state'].value_counts())
+fraud_trans_dummies['job'] = fraud_trans_dummies['job'].map(fraud_trans_dummies['job'].value_counts())
+```
+**Remove unnecessary columns:**
+```python
+# Drop all unnecessary columns
+exclude_cols = ['trans_date_trans_time','dob','year_old_dur','lat','long','merch_lat','merch_long','merchant',
+                'zip','first','last','trans_num','unix_time','cc_num','city','street']
+f1 = fraud_trans_dummies.drop(columns = exclude_cols)
+
+# delete 2 first columns
+fraud_data = f1.drop(fraud_trans_dummies.columns[[0,1]], axis = 1)
+```
+**2. Model Training**
+```python
+# a. Break data into 3 data set: train-demo-test
+from sklearn.model_selection import train_test_split
+
+X = fraud_data.drop("is_fraud", axis = 1).values
+y = fraud_data['is_fraud'].values
+
+X_train, X_break1, y_train, y_break1 = train_test_split(X, y, test_size = 0.3, random_state = 42, stratify = y)
+X_demo, X_test, y_demo, y_test = train_test_split(X_break1, y_break1, test_size = 0.5, random_state = 42, stratify = y_break1)
+```
+```python
+# b. Standarization 
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_demo_scaled = scaler.transform(X_demo)
+X_test_scaled = scaler.transform(X_test)
+```
+```python
+# Using cross-validate between Logistic regression and random forest
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score, KFold 
+
+# create models dictionary
+models = {"Logistic Regression": LogisticRegression(), "Random Forest": RandomForestClassifier()}
+balanced_acc_results = []
+f1_score_results = []
+
+# loop through models to find ballanced-accuracy and f1-score
+for model in models.values():
+    kf = KFold(n_splits = 6, random_state = 12, shuffle = True)
+    ba_results = cross_val_score(model, X_train_scaled, y_train, cv=kf, scoring = 'balanced_accuracy')
+    f1_results = cross_val_score(model, X_train_scaled, y_train, cv=kf, scoring = 'f1')
+    
+    balanced_acc_results.append(ba_results)
+    f1_score_results.append(f1_results)
+
+# Boxplot the balanced accuracy
+plt.figure(figsize=(12, 5))
+
+plt.subplot(1, 2, 1)
+plt.boxplot(balanced_acc_results, labels=models.keys())
+plt.title("Balanced Accuracy")
+plt.ylabel("Score")
+plt.grid(True)
+
+# Boxplot the F1-score
+plt.subplot(1, 2, 2)
+plt.boxplot(f1_score_results, labels=models.keys())
+plt.title("F1 Score")
+plt.ylabel("Score")
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+```
+<img width="1189" height="490" alt="image" src="https://github.com/user-attachments/assets/546b5d01-ce1f-4dfb-b228-01c303164a2e" />
+
+=> As the result of the ballanced accuracy plot showed, we will use the Random Forest Model
