@@ -177,7 +177,96 @@ plt.show()
   - It might be because of the holiday season which transactions happen a lot.
 - May and October should be the next to be considered.
 
-**⏱️3. Fraud difference at hour**
+**⏱️3. Fraud difference at hours**
+- Fraud transactions and normal transactions may have different active hours during a day
+```python
+# Create fraud_only and non_fruad table
+fraud_only = fraud_trans[fraud_trans['is_fraud'] == 1]
+non_fraud = fraud_trans[fraud_trans['is_fraud'] == 0]
+
+# Create countplot for those
+plt.figure(figsize = (12,5))
+
+# Countplot for fraud
+plt.subplot(1,2,1)
+sns.countplot(data = fraud_only, x = 'hour_trans', color = 'salmon')
+plt.title('Fraud transaction by hour')
+plt.xticks(ticks=range(0, 25, 2)) 
+
+# Countplot for non-fraud
+plt.subplot(1,2,2)
+sns.countplot(data = non_fraud, x = 'hour_trans', color = 'skyblue')
+plt.title('Non-Fraud transaction by hour')
+plt.xticks(ticks=range(0, 25, 2)) 
+
+plt.show()
+```
+<img width="1014" height="468" alt="image" src="https://github.com/user-attachments/assets/cce59b1b-2a65-49ea-89d8-4f7ea5dd1b85" />
+
+- Fraud transactions usually occured at the late night time, from 22h-3h, especially at 22-23h 
+- Normal transaction usually occured from 12h-23h
+
+-> Check for cardholders who normally do not make late-hour transactions but suddenly make a purchase from 22h-3h, and those who always purchase at these times.
+
+**💵4. Amount difference between fraud and normal transactions**
+- Fraud transactions may focus on some value segment, compare fraud and normal transactions to find some trends:
+```python
+# Draw box plot to check how the value amounts distribute
+plt.figure(figsize = (8,6))
+
+sns.boxplot(data = fraud_trans,
+            x = 'is_fraud',            # Check for both normal and fraud trans
+            y = 'amt')
+
+plt.xticks([0,1],['Non-fraud','Fraud'])     # Change the name for x-sticks
+plt.title('Amount of Money by Fraud')
+plt.xlabel('Is Fraud')
+plt.ylabel('Amount of Money')
+plt.ylim(-100,2000)                   # Set the limit for y_axis to maximum 2000
+
+plt.show()
+```
+<img width="704" height="545" alt="image" src="https://github.com/user-attachments/assets/b8bad9c8-e6f4-4756-b389-215af44d3f59" />
+
+- Normal transactions are very diverse, ranging from 1$ to more than 14000$ with many large transactions indicated by outliers (**I only show the plot to $2000 to focus on the 2 boxex itself**).
+  - Focuses on low transactions (below $200) with the median at about $70
+- Fraud transactions have a wider distribution, with a maximum transaction at $1300, with no outliers
+  - Median value higher than normal trans (at about $400)
+
+-> Fraud transaction focuses on a certain range of $ amount with higher value than normal transactions.
+
+- Use KDE plot for a deeper understanding:
+
+```python
+plt.figure(figsize=(8,6))
+sns.kdeplot(
+    fraud_trans[fraud_trans.is_fraud==0]["amt"], 
+    label="Non-fraud", 
+    fill=True, alpha=0.4)
+sns.kdeplot(
+    fraud_trans[fraud_trans.is_fraud==1]["amt"], 
+    label="Fraud", 
+    fill=True, alpha=0.4
+)
+plt.legend()
+plt.title("KDE Plot: Transaction Amount Distribution")
+plt.xlim(-100,2000)
+
+plt.show()
+```
+<img width="726" height="545" alt="image" src="https://github.com/user-attachments/assets/8e9a9329-2f55-4947-8c75-565f35c3f8cf" />
+
+- Normal transactions distribution center around 1$ to approximately 200$, which is understandable because most normal trade activities fall within that range.
+- For the Fraud Transaction things is more fluctual. There are 3 peaks with 3 different meanings:
+    - Peak 1 from 1$ to 100$: Micro-Transactions, the villain make small transaction to check if the card is still active without drawing attention from bank or card holder
+    - Peak 2 from 250$ to 400$: Medium-transactions, the villain make transaction amount that banks wont set under alarm. Usually they buy mid-value products and resell them for profit.
+    - Peak 3 from 750$ to 1100$: High-value-transactions, the villain maximize profit after confirm that the card is clean. It might buy some jewelry, electronic or plane tickets
+
+**🏢5. Fraud Merchant & Category**
+
+**Category:**
+
+- Check for fraud rate and fraud loss $ to find the most risky category
 ```python
 # Create fraud_only and non_fruad table
 fraud_only = fraud_trans[fraud_trans['is_fraud']columns
@@ -211,7 +300,7 @@ plt.show()
 # Calculate fraud_rate
 fraud_merchant = fraud_trans[fraud_trans['is_fraud'] == 1]['merchant'].value_counts()
 non_fraud_merchant = fraud_trans[fraud_trans['is_fraud'] == 0]['merchant'].value_counts()
-fraud_rate_merchant = (fraud_merchant/non_fraud_merchant).fillna(0)
+fraud_rate_merchant = ((fraud_merchant/non_fraud_merchant)*100).fillna(0)
 
 # Turn fraud_rate into dataframe
 fraud_rate_merchant_df = fraud_rate_merchant.reset_index()
@@ -274,23 +363,76 @@ plt.title("Fraud Rate vs Total amount money for merchant")
 
 plt.show()
 ```
-<img width="1166" height="622" alt="fraud rate merchant" src="https://github.com/user-attachments/assets/4ca56a31-bb57-46c6-a67f-e902c1964487" />
+<img width="1161" height="622" alt="fraud rate merchant" src="https://github.com/user-attachments/assets/ffd0389b-2922-4bf0-931e-6fb5735ee89f" />
 
 
-- Most merchants have a fraud rate below 5%, and a few merchants show higher fraud rates (15–30%) but with low transaction counts. This suggests that a high number of transactions doesn't mean a higher fraud rate.
-- On the other hand, merchants with higher fraud rates tend to be associated with higher transaction amounts. This indicates that the financial risk is more strongly related to the fraud rate than to the number of transactions.
+- Most merchants have a fraud rate below 5%, and a few merchants show higher fraud rates (20-27%) but with low transaction counts. This suggests that a high number of transactions doesn't mean a higher fraud rate.
+- On the other hand, merchants with higher fraud rates tend to be associated with higher transaction amounts. This indicates that the financial is more strongly related to the fraud rate than to the number of transactions.
 
 Therefore, merchants with both high fraud rates and large transaction amounts should be prioritized for monitoring.
 
-**Top 10 most fraud merchants**
-- The limit anti-fraud resources make us focus on the top fraud merchants first
+**Top 10 most fraud rate merchants**
+- The limit anti-fraud resources and the relation with fraud rate and transaction amount $ -> focus on the top fraud rate merchants and their fraud loss $
 
-<img width="1110" height="678" alt="Top 10 fraud merchant" src="https://github.com/user-attachments/assets/910437d9-5e83-48ea-a383-5fca469f71c4" />
+```python
+# Top 10 most fraud merchants 
+fraud_merchant = fraud_trans[fraud_trans['is_fraud'] == 1]['merchant'].value_counts()
+all_merchant = fraud_trans['merchant'].value_counts()
+fraud_rate_merchant = ((fraud_merchant/all_merchant)*100).fillna(0).sort_values(ascending = False).head(10)
 
-- The top 10 fraud by merchants show 10 name that be targeted the most, each one have more than 45 fraud transactions in just 18 months
-  - Cormier LLC, Kozey-Boehm, Padberg-Welch, and Terry-Huel have very high fraud and fraud amount value.
+# Fraud money amt $ for top10 fraud merchant
+amt_fraud_merchant = fraud_trans[fraud_trans['is_fraud'] == 1].groupby('merchant')['amt'].sum()
+amtfraud_merchant = amt_fraud_merchant[amt_fraud_merchant.index.isin(fraud_rate_merchant.index)]
 
-**🗺️4. Fraud in state and city aspect**
+# merge these series into dataframe 
+top_merchant = pd.concat(
+                    [fraud_rate_merchant, amtfraud_merchant],
+                    axis = 1).reset_index()
+top_merchant.columns = ['merchant', 'fraud_rate_%', 'amt']
+
+# Draw chart for top 10 fraud merchant
+fig, ax1= plt.subplots(figsize = (12,6))
+
+# Draw bar plot for fraud count
+ax1.bar(top_merchant['merchant'],
+        top_merchant['fraud_rate_%'],
+        color = 'skyblue',
+        label = 'Fraud Rate %')
+ax1.set_ylabel('Fraud count', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
+
+# Draw line plot for fraud amount
+ax2 = ax1.twinx()
+ax2.plot(top_merchant['merchant'],
+         top_merchant['amt'],
+         color = 'red',
+         marker = 'o',
+         label = 'Fraud Amount $')
+ax2.set_ylabel('Fraud amount $', color = 'red')
+ax2.tick_params(axis='y', labelcolor='red')
+# Make the right column start with 0
+# ax2.set_ylim(0, max(top_city['amt']) * 1.1)
+
+# Make legend for ax1 and ax2
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+fig.legend(handles1+handles2, labels1+labels2,
+           loc='upper right')   #  Same legend in the upper right
+
+# Add title
+plt.title('Top 10 merchants with most fraud (count vs amount $)')
+ax1.tick_params(axis='x', rotation=45)
+
+plt.show()
+```
+
+<img width="1110" height="766" alt="image" src="https://github.com/user-attachments/assets/9f0e1b47-2dfe-4ab0-981e-a4b76d5d10ae" />
+
+- The top 10 highest fraud rates suggest that not every high fraud rate leads to high fraud loss. So we can just focus on some high-risk merchants like:
+  - Kozey-Boehm, last_ltd, Bins and bfeffer, and Terry Huel
+  - Those merchants have >20% fraud rate and > $40000 fraud loss
+
+**🗺️6. Fraud in state and city aspects**
 
 **Top 10 most fraud state**
 ```python
