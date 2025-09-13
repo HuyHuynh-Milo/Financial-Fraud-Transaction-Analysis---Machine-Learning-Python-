@@ -17,16 +17,6 @@ This project is designed to analyze and predict fraudulent financial transaction
 - **Build predictive models**: Apply machine learning algorithms to classify transactions as fraudulent or non-fraudulent, and evaluate their performance.
 - **Scalability & adaptability**: Ensure the solution can be applied to different datasets and adapted to evolving fraud techniques.
 
-🔭 **Scope:**
-
-The scope of this project defines the boundaries and focus areas for fraud detection and prediction:
-- Data exploration & preprocessing: Cleaning, transforming, and preparing raw financial transaction data for analysis.
-- Exploratory data analysis (EDA): Visualizing and understanding transaction patterns, fraud distribution, and correlations among features.
-- Model development & evaluation: Building and testing machine learning models (e.g., Logistic Regression, Random Forest, XGBoost) to detect fraud.
-- Performance measurement: Using metrics such as precision, recall, F1-score, and ROC-AUC to assess model effectiveness.
-- Practical application: Providing insights and predictive tools that can support fraud investigators and risk management teams.
-Out of scope: This project does not cover deployment into production systems, integration with real-time transaction monitoring platforms, or regulatory/legal aspects of fraud management. 
-
 ---
 ## 📂 Dataset description & structure
 📎 **Data Source:**
@@ -771,6 +761,7 @@ y = fraud_data['is_fraud'].values
 X_train, X_break1, y_train, y_break1 = train_test_split(X, y, test_size = 0.3, random_state = 42, stratify = y)
 X_demo, X_test, y_demo, y_test = train_test_split(X_break1, y_break1, test_size = 0.5, random_state = 42, stratify = y_break1)
 ```
+
 ```python
 # b. Standarization 
 from sklearn.preprocessing import MinMaxScaler
@@ -780,7 +771,10 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_demo_scaled = scaler.transform(X_demo)
 X_test_scaled = scaler.transform(X_test)
 ```
+- Because of the imbalanced and the importance of predicting the right fraud on this dataset, F1-Score and Balanced Accuracy are good indicators for model evaluation
+
 ```python
+# c. Evaluating Models
 # Using cross-validate between Logistic regression and random forest
 
 from sklearn.linear_model import LogisticRegression
@@ -820,6 +814,81 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 ```
+
 <img width="1189" height="490" alt="image" src="https://github.com/user-attachments/assets/546b5d01-ce1f-4dfb-b228-01c303164a2e" />
 
-=> As the result of the ballanced accuracy plot showed, we will use the Random Forest Model
+- The F1-score shows that the random forest model prediction for fraud transactions has a score of more than 0.9, while the logistic regression is more than 0.5
+  - This shows that Random Forest is better in both precision and recall, which means both False negative and False Positive have been triggered better than logistic regression.
+- The Balanced Accuracy clearly indicates that the Random Forest model works better on this imbalanced dataset, which mean its won't get biased by the large True negative in this case.
+
+=> As the result showed, we will use the Random Forest Model for future fraud prediction on datasets similar to this one.
+
+**3. Parameter Tunning**
+```python
+# Grid Search to find the best parameters 
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, KFold 
+from sklearn.metrics import f1_score, balanced_accuracy_score
+
+# Create cross-validation and param_grid 
+kf = KFold(n_splits = 5, shuffle = True, random_state = 42)
+
+param_grid = {'n_estimators' : [100,200],
+              'max_depth' : [None,10],
+              'max_features': ['sqrt', 'log2']}
+# create random forest
+ranfor = RandomForestClassifier(random_state = 42)
+
+# Set up Grid Search
+grid_search = GridSearchCV(estimator = ranfor, param_grid = param_grid, 
+                           scoring = 'balanced_accuracy', cv = kf)
+
+grid_search.fit(X_train_scaled, y_train)
+
+# Print out score
+print("Best parameters:", grid_search.best_params_)
+print("Best score:", grid_search.best_score_)
+```
+- Best parameters: {'max_depth': None, 'max_features': 'sqrt', 'n_estimators': 200}
+- Best score: 0.9355787140537071
+
+```python
+# Runing on demo dataset after tuning 
+from sklearn.metrics import balanced_accuracy_score
+
+best_model = grid_search.best_estimator_
+y_pred_demo = best_model.predict(X_demo_scaled)
+score = balanced_accuracy_score(y_demo, y_pred_demo)
+
+print("Balanced Accuracy score after params tunning:", score)
+```
+- Balanced Accuracy score after params tunning: 0.9474928904803295
+
+```python
+# Runing demo test without tuning to check if tuning make sense
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score, balanced_accuracy_score
+# Apply model in train dataset
+
+ran_for = RandomForestClassifier(random_state = 42)
+ran_for.fit(X_train_scaled,y_train)
+y_pred_demo = ran_for.predict(X_demo_scaled)
+
+print("Balanced Accuracy score without tunning: ",balanced_accuracy_score(y_demo, y_pred_demo))
+```
+- Balanced Accuracy score without tunning:  0.946789483684584
+
+=> Perhaps Tuning doesn't affect much on this ML model
+
+```python
+# Running on the final test set
+y_pred_test = ran_for.predict(X_test_scaled)
+print("Balanced Accuracy score for test set:", balanced_accuracy_score(y_test, y_pred_test))
+```
+- Balanced Accuracy score for test set: 0.9353558781267997
+
+**4. Conclusion**
+- So this ML Model have the balanced accuracy of the final test set is 93.53%
+- The best Model to use in this case is the random forest 
+- The parameters tunning doesn't make a significant improvement 
